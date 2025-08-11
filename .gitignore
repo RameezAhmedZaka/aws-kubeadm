@@ -1,0 +1,7 @@
+
+**/.terraform/*
+*.tfstate
+*.tfstate.*
+*.log
+# Ignore Terraform state files specific to modules
+*.terraform.lock.hcl
