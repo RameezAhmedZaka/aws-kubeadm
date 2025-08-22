@@ -8,9 +8,17 @@ resource "aws_security_group" "nodes_sg" {
       from_port   = ingress.value
       to_port     = ingress.value
       protocol    = "tcp"
-      cidr_blocks = [var.ingress_cidr_block]
+      cidr_blocks = [var.ingress_cidr_block] 
     }
   }
+
+  ingress {
+  from_port   = 30000
+  to_port     = 32767
+  protocol    = "tcp"
+  cidr_blocks = ["10.0.0.0/16"]  
+}
+
 
   egress {
     from_port   = 0
@@ -23,6 +31,16 @@ resource "aws_security_group" "nodes_sg" {
     Name = var.sg_name
   }
 }
+
+resource "aws_security_group_rule" "allow_laptop_to_master_api" {
+  type              = "ingress"
+  from_port         = 6443
+  to_port           = 6443
+  protocol          = "tcp"
+  security_group_id = aws_security_group.nodes_sg.id
+  cidr_blocks       = ["154.192.59.95/32"]
+}
+
 
 resource "aws_instance" "master" {
   ami                         = var.ami_id

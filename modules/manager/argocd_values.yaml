@@ -1,0 +1,36 @@
+# -------------------------
+# ArgoCD server service configuration
+# -------------------------
+server:
+  service:
+    type: NodePort        # Expose via NodePort
+    nodePort: 30080       # Change if needed
+  extraArgs:
+    - --insecure          # Skip TLS for simplicity in dev/private cluster
+
+# -------------------------
+# Admin password (optional)
+# -------------------------
+configs:
+  secret:
+    argocdServerAdminPassword: ""  # Leave empty to use default or change if needed
+
+# -------------------------
+# Repositories configuration
+# -------------------------
+# repositories:
+#   - type: git
+#     url: "https://github.com/RameezAhmedZaka/kustomize-app.git"
+#     usernameSecret:
+#       name: argocd-github-credentials
+#       key: username
+#     passwordSecret:
+#       name: argocd-github-credentials
+#       key: password
+
+# # -------------------------
+# # Optional: disable ingress if not needed
+# # -------------------------
+# controller:
+#   extraArgs:
+#     - --repo-server-timeout=120

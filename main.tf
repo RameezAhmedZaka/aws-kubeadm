@@ -1,3 +1,5 @@
+
+
 module "vpc" {
   source                     = "./modules/vpc"
   vpc_cidr_block             = var.vpc.vpc_cidr_block
@@ -51,6 +53,7 @@ module "nodes" {
   depends_on            = [module.vpc]
 }
 
+
 module "manager" {
   source                = "./modules/manager"
   ami_id                = var.manager.ami_id
@@ -63,6 +66,8 @@ module "manager" {
   manager_name          = var.manager.manager_name
   manager_sg_name       = var.manager.manager_sg_name
   user_data_file        = var.manager.user_data_file
+  master_private_ip     = module.nodes.master_private_ip
+  master_instance_id    = module.nodes.master_instance_id
+  worker_instance_id    = module.nodes.worker_instances
 
-  depends_on            = [module.vpc, module.nodes]
 }

@@ -13,3 +13,11 @@ output "worker_private_ips" {
   value       = module.nodes.worker_private_ips
 }
 
+output "master_instance_id" {
+  value = module.nodes.master_instance_id
+}
+
+output "worker_instances_from_nodes" {
+  value = module.nodes.worker_instances
+}
+

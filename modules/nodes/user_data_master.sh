@@ -94,26 +94,4 @@ aws ssm put-parameter \
   --overwrite \
   --region us-east-1
 
-# for i in {1..5}; do
-#   echo "Uploading join command to SSM (Attempt $i)..."
-#   aws ssm put-parameter \
-#     --name "/k8s/join-command" \
-#     --type "String" \
-#     --value "$JOIN_CMD" \
-#     --overwrite \
-#     --region "$REGION" && break || sleep 10
-# done
 
-# # Encode kubeconfig
-# KUBECONFIG_BASE64=$(base64 /etc/kubernetes/admin.conf | tr -d '\n')
-
-# # Upload kubeconfig to SSM (SecureString)
-# for i in {1..5}; do
-#   echo "Uploading kubeconfig to SSM (Attempt $i)..."
-#   aws ssm put-parameter \
-#     --name "/k8s/kubeconfig-admin" \
-#     --type "SecureString" \
-#     --value "$KUBECONFIG_BASE64" \
-#     --overwrite \
-#     --region "$REGION" && break || sleep 10
-# done

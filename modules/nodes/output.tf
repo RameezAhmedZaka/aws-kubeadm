@@ -11,3 +11,8 @@ output "worker_private_ips" {
 output "master_instance_id" {
   value = aws_instance.master.id
 }
+
+output "worker_instances" {
+  description = "List of worker instance IDs"
+  value       = aws_instance.workers[*].id
+}

@@ -57,3 +57,21 @@ variable "manager_cluster" {
   type        = string
  
 }
+
+variable "git_repo_url" {
+  default = "https://github.com/RameezAhmedZaka/kustomize-app.git"
+}
+
+variable "master_instance_id" {
+  description = "The ID of the master node to wait for"
+  type        = any
+}
+
+variable "worker_instance_id" {
+  description = "The ID of the master node to wait for"
+  type        = list(any)
+}
+
+variable "master_private_ip" {
+  type = string
+}

@@ -34,13 +34,27 @@ resource "aws_iam_role_policy" "manager_custom_ssm_policy" {
           "ssm:ListCommands",
           "ssm:DescribeInstanceInformation",
           "ssm:DescribeDocument",
-          "ssm:GetDocument"
+          "ssm:GetDocument",
+          "ssm:StartSession",
+          "ssm:DescribeInstanceInformation",
+          "ssm:DescribeSessions",
+          "ssm:GetConnectionStatus",
+          "ssm:TerminateSession"
         ],
         Resource = "*"
       },
       {
         Effect = "Allow",
         Action = ["ec2:DescribeInstances"],
+        Resource = "*"
+      },
+      {
+        Effect = "Allow",
+        Action = [
+          "secretsmanager:GetSecretValue",
+          "secretsmanager:DescribeSecret",
+          "secretsmanager:ListSecrets"
+        ],
         Resource = "*"
       }
     ]
@@ -56,6 +70,8 @@ resource "aws_iam_instance_profile" "manager_ssm_instance_profile" {
   name = var.manager_profile_name
   role = aws_iam_role.manager_ssm_role.name
 }
+
+
 
 # -------------------
 # Node IAM Role and Policies
