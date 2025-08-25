@@ -69,5 +69,8 @@ module "manager" {
   master_private_ip     = module.nodes.master_private_ip
   master_instance_id    = module.nodes.master_instance_id
   worker_instance_id    = module.nodes.worker_instances
+  # manager_name          = "manager"
+  
+  
 
 }

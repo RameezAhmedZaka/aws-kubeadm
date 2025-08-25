@@ -5,14 +5,6 @@ terraform {
       source  = "hashicorp/aws"
       version = ">= 5.0"
     }
-    null = {
-      source  = "hashicorp/null"
-      version = ">= 3.2.0"
-    }
-    http = {
-      source  = "hashicorp/http"
-      version = ">= 3.5.0"
-    }
     kubectl = {
       source  = "gavinbunney/kubectl"
       version = ">= 1.14.0"
@@ -20,66 +12,42 @@ terraform {
   }
 }
 
-# provider "kubectl" {
-#   alias                  = "module_provider"
-#   host                   = local.cluster_info["server"]
-#   cluster_ca_certificate = base64decode(local.cluster_info["certificate-authority-data"])
-#   client_certificate     = base64decode(local.user_info["client-certificate-data"])
-#   client_key             = base64decode(local.user_info["client-key-data"])
-#   load_config_file       = false
-# }
+
+data "aws_ssm_parameter" "kubeconfig" {
+  depends_on      = [module.manager.fetch_kubeconfig_id] 
+  name            = "/k8s/kubeconfig"
+  with_decryption = true
+}
+
+# ----------------------------
+# Parse kubeconfig YAML
+# ----------------------------
+locals {
+  kubeconfig_yaml = yamldecode(data.aws_ssm_parameter.kubeconfig.value)
+
+  cluster_info = local.kubeconfig_yaml["clusters"][0]["cluster"]
+  user_info    = local.kubeconfig_yaml["users"][0]["user"]
+}
 
 
+provider "kubectl" {
+  host                   = "https://127.0.0.1:6443"
+  client_certificate     = base64decode(yamldecode(data.aws_ssm_parameter.kubeconfig.value)["users"][0]["user"]["client-certificate-data"])
+  client_key             = base64decode(yamldecode(data.aws_ssm_parameter.kubeconfig.value)["users"][0]["user"]["client-key-data"])
+  load_config_file       = false
+  insecure               = true
+}
 
+# ----------------------------
+# helm provider
+# ----------------------------
+provider "helm" {
+  kubernetes = {
+    host                   = "https://127.0.0.1:6443"
+    client_certificate     = base64decode(yamldecode(data.aws_ssm_parameter.kubeconfig.value)["users"][0]["user"]["client-certificate-data"])
+    client_key             = base64decode(yamldecode(data.aws_ssm_parameter.kubeconfig.value)["users"][0]["user"]["client-key-data"])
+    load_config_file       = false
+    insecure               = true
+  }
+}
 
-
-
-  # load_config_file = false 
-
-
-
-
-
-
-
-
-
-
-
-
-
-# provider "kubectl" {
-#   alias       = "module_provider"
-#   config_path = "/root/.kube/config"  # Path used in user_data_ssm.sh
-# }
-# terraform {
-#    required_version = ">= 0.13"
-#   required_providers {
-#     aws = {
-#       source  = "hashicorp/aws"
-#       version = ">= 3.66.0"
-#     }
-#     # kubernetes = {
-#     #   source  = "hashicorp/kubernetes"
-#     #   version = ">= 2.7.1"
-#     # }
-#     # helm = {
-#     #   source  = "hashicorp/helm"
-#     #   version = ">= 2.4.1"
-#     # }
-#     kubectl = {
-#       source  = "gavinbunney/kubectl"
-#        version = ">= 1.14.0"
-
-#   }
-
-#     null = {
-#       source  = "hashicorp/null"
-#       version = ">= 3.2.0"
-#     }
-#     http = {
-#       source  = "hashicorp/http"
-#       version = ">= 3.5.0"
-#     }
-# }
-# }

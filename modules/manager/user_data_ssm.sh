@@ -133,6 +133,9 @@ helm upgrade -i ingress-nginx ingress-nginx/ingress-nginx \
 # # Patch ArgoCD service to NodePort
 # kubectl patch svc argocd-server -n argocd -p '{ "spec": { "type": "NodePort" } }'
 
+# kubectl port-forward svc/argocd-server -n argo-cd 8080:443
+
+
 # nohup kubectl port-forward svc/argocd-server -n argocd 8080:443 > /var/log/argocd-portforward.log 2>&1 &
 
 # GIT_SECRET=$(aws secretsmanager get-secret-value --secret-id your-git-secret-name --query SecretString --output text)

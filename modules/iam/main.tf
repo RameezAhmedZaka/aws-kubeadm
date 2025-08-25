@@ -113,6 +113,12 @@ resource "aws_iam_role_policy" "node_limited_ssm_policy" {
   })
 }
 
+# Attach AmazonSSMManagedInstanceCore for full SSM connectivity
+resource "aws_iam_role_policy_attachment" "node_ssm_core_attachment" {
+  role       = aws_iam_role.node_ssm_role.name
+  policy_arn = "arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore"
+}
+
 resource "aws_iam_instance_profile" "node_ssm_instance_profile" {
   name = var.node_profile_name
   role = aws_iam_role.node_ssm_role.name
