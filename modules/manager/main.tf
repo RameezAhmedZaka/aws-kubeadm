@@ -131,7 +131,7 @@ resource "null_resource" "fetch_kubeconfig" {
 }
 
 # ----------------------------
-# Install ArgoCD via Helm (instead of raw manifest)
+# Install ArgoCD via Helm
 # ----------------------------
 resource "helm_release" "argocd" {
 
@@ -142,28 +142,75 @@ resource "helm_release" "argocd" {
   namespace        = "argocd"
   create_namespace = true
   cleanup_on_fail  = true
-  timeout          = 600 
+  timeout          = 600
   skip_crds        = true
-
-  force_update     = false
-  recreate_pods    = false
-
-  wait             = false
-
-
 
   values = [
     <<EOF
 server:
   service:
     type: NodePort
-    
 EOF
   ]
 }
 
+# ----------------------------
+# Fetch Docker Hub secret from AWS Secrets Manager
+# ----------------------------
+data "aws_secretsmanager_secret_version" "dockerhub" {
+  secret_id = "dockerhub-secret"
+}
+
+resource "kubectl_secret" "dockerhub" {
+  depends_on = [helm_release.argocd]
+
+  metadata {
+    name      = "dockerhub-secret"
+    namespace = "default"
+  }
+
+  type = "kubernetes.io/dockerconfigjson"
+
+  data = {
+    ".dockerconfigjson" = data.aws_secretsmanager_secret_version.dockerhub.secret_string
+  }
+}
+
+# ----------------------------
+# Fetch GitHub credentials from AWS Secrets Manager
+# ----------------------------
+data "aws_secretsmanager_secret_version" "github_creds" {
+  secret_id = "github-credentials"
+}
+
+locals {
+  github_creds   = jsondecode(data.aws_secretsmanager_secret_version.github_creds.secret_string)
+  github_username = local.github_creds["username"]
+  github_token    = local.github_creds["token"]
+}
+
+resource "kubectl_secret" "github" {
+  depends_on = [helm_release.argocd]
+
+  metadata {
+    name      = "github-secret"
+    namespace = "default"
+  }
+
+  type = "kubernetes.io/basic-auth"
+
+  data = {
+    username = local.github_username
+    password = local.github_token
+  }
+}
+
+# ----------------------------
+# Deploy ArgoCD Application
+# ----------------------------
 resource "kubectl_manifest" "argocd_app" {
-  depends_on = [helm_release.argocd, null_resource.fetch_kubeconfig]
+  depends_on = [helm_release.argocd, kubectl_secret.dockerhub, kubectl_secret.github]
 
   yaml_body = file("${path.module}/argocd_app.yaml")
 }
+
