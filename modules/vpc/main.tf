@@ -15,6 +15,7 @@ resource "aws_subnet" "publicsubnet" {
 
   tags = {
     Name = "k8s-public-${count.index + 1}" # Dynamically naming
+    Tier = "Private"
   }
 }
 
@@ -25,7 +26,8 @@ resource "aws_subnet" "privatesubnet" {
   availability_zone = element(var.private_availability_zones, count.index)
 
   tags = {
-    Name = "k8s-private-${count.index + 1}" # Dynamically naming
+    Name = "k8s-private-${count.index + 1}"
+    Tier = "Private" # Dynamically naming
   }
 }
 

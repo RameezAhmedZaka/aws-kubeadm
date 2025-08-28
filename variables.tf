@@ -3,26 +3,32 @@ variable "aws_region" {
   type        = string
 }
 
-variable "vpc" {
-  description = "VPC configuration"
-  type = object({
-    vpc_cidr_block              = string
-    vpc_name                    = string
-    internet_gateway            = string
-    public_subnet_cidr          = list(string)
-    private_subnet_cidr         = list(string)
-    public_availability_zones   = list(string)
-    private_availability_zones  = list(string)
-    public_subnet_name          = list(string)
-    private_subnet_name         = list(string)
-    route_destination           = string
-    nat_gateway                 = string
-    route_table_public          = string
-    route_table_private         = string
-    cidr_block                  = string
-    eip_name                    = string
-  })
+# variable "vpc" {
+#   description = "VPC configuration"
+#   type = object({
+#     vpc_cidr_block              = string
+#     vpc_name                    = string
+#     internet_gateway            = string
+#     public_subnet_cidr          = list(string)
+#     private_subnet_cidr         = list(string)
+#     public_availability_zones   = list(string)
+#     private_availability_zones  = list(string)
+#     public_subnet_name          = list(string)
+#     private_subnet_name         = list(string)
+#     route_destination           = string
+#     nat_gateway                 = string
+#     route_table_public          = string
+#     route_table_private         = string
+#     cidr_block                  = string
+#     eip_name                    = string
+#   })
+# }
+
+variable "existing_vpc_name" {
+  description = "Name of the already existing VPC to use"
+  type        = string
 }
+
 
 variable "node" {
   description = "Kubernetes node configuration"

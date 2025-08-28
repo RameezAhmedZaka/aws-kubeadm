@@ -1,3 +1,13 @@
+terraform {
+  required_version = ">= 0.13.6"
+  required_providers {
+    kubectl = {
+      source  = "gavinbunney/kubectl"
+      version = ">= 1.14.0"
+    }
+  }
+}
+
 # ----------------------------
 # Security Group for Manager
 # ----------------------------
@@ -124,6 +134,7 @@ resource "null_resource" "fetch_kubeconfig" {
 # Install ArgoCD via Helm (instead of raw manifest)
 # ----------------------------
 resource "helm_release" "argocd" {
+
   repository       = "https://argoproj.github.io/argo-helm"
   name             = "argocd"
   chart            = "argo-cd"
@@ -134,12 +145,25 @@ resource "helm_release" "argocd" {
   timeout          = 600 
   skip_crds        = true
 
+  force_update     = false
+  recreate_pods    = false
+
+  wait             = false
+
+
+
   values = [
     <<EOF
 server:
   service:
     type: NodePort
+    
 EOF
   ]
 }
 
+resource "kubectl_manifest" "argocd_app" {
+  depends_on = [helm_release.argocd, null_resource.fetch_kubeconfig]
+
+  yaml_body = file("${path.module}/argocd_app.yaml")
+}

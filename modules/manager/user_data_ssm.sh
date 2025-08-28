@@ -135,6 +135,9 @@ helm upgrade -i ingress-nginx ingress-nginx/ingress-nginx \
 
 # kubectl port-forward svc/argocd-server -n argo-cd 8080:443
 
+# aws ssm start-session   --target i-02a96f3d1b2615d74   --document-name AWS-StartPortForwardingSession   --parameters '{"portNumber":["8080"],"localPortNumber":["8080"]}'
+# argocd --port-forward --port-forward-namespace=argocd login --username=admin --password=liuELjtbWl843mCK
+
 
 # nohup kubectl port-forward svc/argocd-server -n argocd 8080:443 > /var/log/argocd-portforward.log 2>&1 &
 
@@ -192,3 +195,21 @@ helm upgrade -i ingress-nginx ingress-nginx/ingress-nginx \
 # nohup socat TCP-LISTEN:8443,fork TCP:${ARGOCD_NODE_IP}:${ARGOCD_NODEPORT} > /tmp/socat.log 2>&1 &
 
 # echo "ArgoCD should now be accessible at https://<private-node-ip>:8443"
+
+
+
+
+
+
+
+# kubectl -n kube-system edit configmap coredns
+# rometheus :9153
+#         forward . 8.8.8.8 8.8.4.4
+#         cache 30
+#         loop
+#         reload
+#         loadbalance
+#     }
+# kind: Conf
+
+# kubectl -n kube-system rollout restart deployment coredns

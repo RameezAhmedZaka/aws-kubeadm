@@ -18,14 +18,15 @@ variable "instance_type_worker" {
   description = "Instance type for worker nodes"
 }
 
+# Reused from data sources in root module
 variable "private_subnet_ids" {
   type        = list(string)
-  description = "List of private subnet IDs"
+  description = "List of private subnet IDs (from data source)"
 }
 
 variable "vpc_id" {
   type        = string
-  description = "VPC ID"
+  description = "VPC ID (from data source)"
 }
 
 variable "iam_instance_profile" {
@@ -46,7 +47,6 @@ variable "sg_description" {
 variable "inbound_ports" {
   description = "List of allowed TCP ports"
   type        = list(number)
-  
 }
 
 variable "egress_cidr_block" {
@@ -62,6 +62,7 @@ variable "region" {
 
 variable "ingress_cidr_block" {
   type        = string
+  description = "Ingress CIDR block for security group"
 }
 
 variable "master_node_name" {
@@ -75,6 +76,7 @@ variable "master_node_role" {
 variable "master_node_cluster" {
   type        = string
 }
+
 variable "worker_node_name" {
   type        = string
 }

@@ -51,3 +51,11 @@ provider "helm" {
   }
 }
 
+
+provider "kubernetes" {
+  host                   = "https://127.0.0.1:6443"
+  client_certificate     = base64decode(yamldecode(data.aws_ssm_parameter.kubeconfig.value)["users"][0]["user"]["client-certificate-data"])
+  client_key             = base64decode(yamldecode(data.aws_ssm_parameter.kubeconfig.value)["users"][0]["user"]["client-key-data"])
+  insecure               = true
+}
+
