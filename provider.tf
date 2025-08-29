@@ -31,7 +31,7 @@ locals {
 
 
 provider "kubectl" {
-  host                   = yamldecode(data.aws_ssm_parameter.kubeconfig.value)["clusters"][0]["cluster"]["server"]
+  host                   = "https://${module.nodes.master_private_ip}:6443"
   client_certificate     = base64decode(yamldecode(data.aws_ssm_parameter.kubeconfig.value)["users"][0]["user"]["client-certificate-data"])
   client_key             = base64decode(yamldecode(data.aws_ssm_parameter.kubeconfig.value)["users"][0]["user"]["client-key-data"])
   load_config_file       = false
@@ -43,7 +43,7 @@ provider "kubectl" {
 # ----------------------------
 provider "helm" {
   kubernetes = {
-    host                   = yamldecode(data.aws_ssm_parameter.kubeconfig.value)["clusters"][0]["cluster"]["server"]
+    host                   = "https://${module.nodes.master_private_ip}:6443"
     client_certificate     = base64decode(yamldecode(data.aws_ssm_parameter.kubeconfig.value)["users"][0]["user"]["client-certificate-data"])
     client_key             = base64decode(yamldecode(data.aws_ssm_parameter.kubeconfig.value)["users"][0]["user"]["client-key-data"])
     load_config_file       = false
@@ -53,7 +53,7 @@ provider "helm" {
 
 
 provider "kubernetes" {
-  host                   = "https://127.0.0.1:6443"
+  host                   = "https://${module.nodes.master_private_ip}:6443"
   client_certificate     = base64decode(yamldecode(data.aws_ssm_parameter.kubeconfig.value)["users"][0]["user"]["client-certificate-data"])
   client_key             = base64decode(yamldecode(data.aws_ssm_parameter.kubeconfig.value)["users"][0]["user"]["client-key-data"])
   insecure               = true

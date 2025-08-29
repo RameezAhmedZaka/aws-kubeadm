@@ -52,6 +52,7 @@ resource "aws_security_group_rule" "allow_laptop_to_master_api" {
 
 
 resource "aws_instance" "master" {
+  depends_on                  = [ aws_instance.workers ]
   ami                         = var.ami_id
   instance_type               = var.instance_type_master
   subnet_id                   = var.private_subnet_ids[0]
@@ -80,7 +81,7 @@ resource "aws_instance" "workers" {
   iam_instance_profile        = var.iam_instance_profile
   user_data                   = file("${path.module}/user_data_worker.sh")
   
-  depends_on                  = [aws_instance.master]
+  # depends_on                  = [aws_instance.master]
 
   tags = {
     Name    = "${var.worker_node_name}-${count.index + 1}"

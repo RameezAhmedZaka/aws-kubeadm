@@ -1,3 +1,7 @@
+# -------------------
+# Manager IAM Role and Policies
+# -------------------
+
 resource "aws_iam_role" "manager_ssm_role" {
   name = var.manager_role_name
 
@@ -36,7 +40,6 @@ resource "aws_iam_role_policy" "manager_custom_ssm_policy" {
           "ssm:DescribeDocument",
           "ssm:GetDocument",
           "ssm:StartSession",
-          "ssm:DescribeInstanceInformation",
           "ssm:DescribeSessions",
           "ssm:GetConnectionStatus",
           "ssm:TerminateSession"
@@ -55,7 +58,7 @@ resource "aws_iam_role_policy" "manager_custom_ssm_policy" {
           "secretsmanager:DescribeSecret",
           "secretsmanager:ListSecrets"
         ],
-        Resource = "*"
+        Resource = "*"  # Can be restricted to specific secret ARNs if desired
       }
     ]
   })
@@ -70,8 +73,6 @@ resource "aws_iam_instance_profile" "manager_ssm_instance_profile" {
   name = var.manager_profile_name
   role = aws_iam_role.manager_ssm_role.name
 }
-
-
 
 # -------------------
 # Node IAM Role and Policies
@@ -106,6 +107,15 @@ resource "aws_iam_role_policy" "node_limited_ssm_policy" {
           "ssm:PutParameter",
           "ssm:GetParameter",
           "ssm:GetParameters"
+        ],
+        Resource = "*"
+      },
+      {
+        Effect = "Allow",
+        Action = [
+          "secretsmanager:GetSecretValue",
+          "secretsmanager:DescribeSecret",
+          "secretsmanager:ListSecrets"
         ],
         Resource = "*"
       }

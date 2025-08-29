@@ -68,6 +68,20 @@ resource "aws_instance" "manager" {
   }
 }
 
+resource "null_resource" "wait_for_ssm" {
+  provisioner "local-exec" {
+    command = <<EOT
+    for i in {1..10}; do
+      aws ssm describe-instance-information --filters "Key=InstanceIds,Values=${aws_instance.manager.id}" --region us-east-1 | grep ${aws_instance.manager.id} && exit 0
+      echo "Waiting for SSM agent..."
+      sleep 15
+    done
+    exit 1
+    EOT
+  }
+}
+
+
 # ----------------------------
 # Wait + Fetch kubeconfig Locally
 # ----------------------------
@@ -134,7 +148,6 @@ resource "null_resource" "fetch_kubeconfig" {
 # Install ArgoCD via Helm
 # ----------------------------
 resource "helm_release" "argocd" {
-
   repository       = "https://argoproj.github.io/argo-helm"
   name             = "argocd"
   chart            = "argo-cd"
@@ -144,6 +157,10 @@ resource "helm_release" "argocd" {
   cleanup_on_fail  = true
   timeout          = 600
   skip_crds        = true
+  force_update     = true
+  wait             = true
+  recreate_pods    = true
+  replace          = true
 
   values = [
     <<EOF
@@ -155,62 +172,59 @@ EOF
 }
 
 # ----------------------------
-# Fetch Docker Hub secret from AWS Secrets Manager
+# Docker Hub Secret
 # ----------------------------
 data "aws_secretsmanager_secret_version" "dockerhub" {
   secret_id = "dockerhub-secret"
 }
 
-resource "kubectl_secret" "dockerhub" {
+resource "kubectl_manifest" "dockerhub_secret" {
   depends_on = [helm_release.argocd]
 
-  metadata {
-    name      = "dockerhub-secret"
-    namespace = "default"
-  }
-
-  type = "kubernetes.io/dockerconfigjson"
-
-  data = {
-    ".dockerconfigjson" = data.aws_secretsmanager_secret_version.dockerhub.secret_string
-  }
+  yaml_body = <<YAML
+apiVersion: v1
+kind: Secret
+metadata:
+  name: dockerhub-secret
+  namespace: default
+type: kubernetes.io/dockerconfigjson
+data:
+  .dockerconfigjson: ${base64encode(data.aws_secretsmanager_secret_version.dockerhub.secret_string)}
+YAML
 }
 
 # ----------------------------
-# Fetch GitHub credentials from AWS Secrets Manager
+# GitHub Secret
 # ----------------------------
-data "aws_secretsmanager_secret_version" "github_creds" {
+data "aws_secretsmanager_secret_version" "github" {
   secret_id = "github-credentials"
 }
 
 locals {
-  github_creds   = jsondecode(data.aws_secretsmanager_secret_version.github_creds.secret_string)
-  github_username = local.github_creds["username"]
-  github_token    = local.github_creds["token"]
+  github = jsondecode(data.aws_secretsmanager_secret_version.github.secret_string)
 }
 
-resource "kubectl_secret" "github" {
+resource "kubectl_manifest" "github_secret" {
   depends_on = [helm_release.argocd]
 
-  metadata {
-    name      = "github-secret"
-    namespace = "default"
-  }
-
-  type = "kubernetes.io/basic-auth"
-
-  data = {
-    username = local.github_username
-    password = local.github_token
-  }
+  yaml_body = <<YAML
+apiVersion: v1
+kind: Secret
+metadata:
+  name: github-secret
+  namespace: default
+type: kubernetes.io/basic-auth
+stringData:
+  username: ${local.github.username}
+  password: ${local.github.token}
+YAML
 }
 
 # ----------------------------
 # Deploy ArgoCD Application
 # ----------------------------
 resource "kubectl_manifest" "argocd_app" {
-  depends_on = [helm_release.argocd, kubectl_secret.dockerhub, kubectl_secret.github]
+  depends_on = [helm_release.argocd, kubectl_manifest.dockerhub_secret, kubectl_manifest.github_secret]
 
   yaml_body = file("${path.module}/argocd_app.yaml")
 }
-
