@@ -216,7 +216,8 @@ helm upgrade -i ingress-nginx ingress-nginx/ingress-nginx \
 
 
 
-# VERSION=v2.13.4
-# curl -sSL -o argocd https://github.com/argoproj/argo-cd/releases/download/$VERSION/argocd-linux-amd64
-# chmod +x argocd
-# sudo mv argocd /usr/local/bin/argocd
+# # VERSION=v2.13.4
+# # curl -sSL -o argocd https://github.com/argoproj/argo-cd/releases/download/$VERSION/argocd-linux-amd64
+# # chmod +x argocd
+# # sudo mv argocd /usr/local/bin/argocd
+# export PATH=$PATH:/usr/local/bin

@@ -41,18 +41,17 @@ resource "aws_security_group" "nodes_sg" {
   }
 }
 
-resource "aws_security_group_rule" "allow_laptop_to_master_api" {
-  type              = "ingress"
-  from_port         = 6443
-  to_port           = 6443
-  protocol          = "tcp"
-  security_group_id = aws_security_group.nodes_sg.id
-  cidr_blocks       = ["154.192.59.95/32"]
+resource "aws_security_group_rule" "allow_worker_to_master" {
+  type                     = "ingress"
+  from_port                = 6443
+  to_port                  = 6443
+  protocol                 = "tcp"
+  security_group_id        = aws_security_group.nodes_sg.id
+  source_security_group_id = aws_security_group.nodes_sg.id
 }
 
 
 resource "aws_instance" "master" {
-  depends_on                  = [ aws_instance.workers ]
   ami                         = var.ami_id
   instance_type               = var.instance_type_master
   subnet_id                   = var.private_subnet_ids[0]
@@ -70,6 +69,21 @@ resource "aws_instance" "master" {
   }
 }
 
+resource "null_resource" "wait_for_join" {
+  depends_on = [aws_instance.master]
+
+  provisioner "local-exec" {
+    command = <<EOT
+echo "Sleeping for 200 seconds to allow master user-data to complete..."
+sleep 200
+echo "Waiting for /k8s/join-command SSM parameter..."
+while ! aws ssm get-parameter --name "/k8s/join-command" --region us-east-1 &>/dev/null; do
+  sleep 5
+done
+EOT
+  }
+}
+
 resource "aws_instance" "workers" {
   count                       = 2
   ami                         = var.ami_id
@@ -81,7 +95,7 @@ resource "aws_instance" "workers" {
   iam_instance_profile        = var.iam_instance_profile
   user_data                   = file("${path.module}/user_data_worker.sh")
   
-  # depends_on                  = [aws_instance.master]
+  depends_on                  = [aws_instance.master, null_resource.wait_for_join]
 
   tags = {
     Name    = "${var.worker_node_name}-${count.index + 1}"
@@ -94,25 +108,35 @@ resource "aws_instance" "workers" {
 
 resource "aws_ssm_document" "run_join_command" {
   name          = "RunJoinCommand"
+  depends_on    = [ aws_instance.workers, aws_instance.master ]
   document_type = var.document_type
 
   content = jsonencode({
     schemaVersion = "2.2",
-    description   = "Run the kubeadm join command",
+    description   = "Run the kubeadm join command with retry loop",
     mainSteps = [
       {
         action = "aws:runShellScript",
         name   = "runJoin",
         inputs = {
           runCommand = [
-            "JOIN_CMD=$(aws ssm get-parameter --name /k8s/join-command --region ${var.region} --query 'Parameter.Value' --output text)",
-            "$JOIN_CMD"
+            "region=$(curl -s http://169.254.169.254/latest/dynamic/instance-identity/document | grep region | cut -d\\\" -f4)",
+            "for i in {1..30}; do",
+            "  JOIN_CMD=$(aws ssm get-parameter --name /k8s/join-command --region $region --query 'Parameter.Value' --output text 2>/dev/null)",
+            "  if [ -n \"$JOIN_CMD\" ]; then",
+            "    sudo $JOIN_CMD",
+            "    break",
+            "  fi",
+            "  echo \"Waiting for master... attempt $i\"",
+            "  sleep 10",
+            "done"
           ]
         }
       }
     ]
   })
 }
+
 
 resource "aws_ssm_document" "configure_kubeconfig" {
   name          = "ConfigureKubeConfig"

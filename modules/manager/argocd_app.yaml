@@ -8,7 +8,9 @@ spec:
   source:
     repoURL: https://github.com/RameezAhmedZaka/argocd-dataapp.git
     targetRevision: HEAD
-    path: .
+    path: argocd
+    sourceSecrets:
+      - name: github-credentials
   destination:
     server: https://kubernetes.default.svc
     namespace: default

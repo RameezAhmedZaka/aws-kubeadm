@@ -16,3 +16,4 @@ output "worker_instances" {
   description = "List of worker instance IDs"
   value       = aws_instance.workers[*].id
 }
+

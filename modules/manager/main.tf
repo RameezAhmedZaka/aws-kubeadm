@@ -14,6 +14,20 @@ terraform {
 resource "aws_security_group" "bastion_sg" {
   name   = var.manager_sg_name
   vpc_id = var.vpc_id
+  
+  ingress {
+    from_port   = 30000
+    to_port     = 32767
+    protocol    = "tcp"
+    cidr_blocks = ["10.0.0.0/16"]  
+  }
+
+  ingress {
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = ["10.0.0.0/16"]
+  }
 
   egress {
     from_port   = 0
@@ -81,12 +95,11 @@ resource "null_resource" "wait_for_ssm" {
   }
 }
 
-
 # ----------------------------
 # Wait + Fetch kubeconfig Locally
 # ----------------------------
 resource "null_resource" "fetch_kubeconfig" {
-  depends_on = [aws_instance.manager]
+  depends_on = [aws_instance.manager, null_resource.wait_for_nodes, null_resource.wait_for_ssm]
 
   provisioner "local-exec" {
     command = <<EOT
@@ -97,7 +110,7 @@ resource "null_resource" "fetch_kubeconfig" {
         --query "Reservations[0].Instances[0].InstanceId" \
         --output text)
 
-      for i in {1..30}; do
+      for i in {1..20}; do
         CMD_ID=$(aws ssm send-command \
           --targets "Key=instanceIds,Values=$INSTANCE_ID" \
           --document-name "AWS-RunShellScript" \
@@ -155,7 +168,7 @@ resource "helm_release" "argocd" {
   namespace        = "argocd"
   create_namespace = true
   cleanup_on_fail  = true
-  timeout          = 600
+  timeout          = 300
   skip_crds        = true
   force_update     = true
   wait             = true
@@ -172,10 +185,11 @@ EOF
 }
 
 # ----------------------------
-# Docker Hub Secret
+# Docker Hub Secret (from SSM Parameter Store)
 # ----------------------------
-data "aws_secretsmanager_secret_version" "dockerhub" {
-  secret_id = "dockerhub-secret"
+data "aws_ssm_parameter" "dockerhub" {
+  name            = "/credentials/dockerhub"
+  with_decryption = true
 }
 
 resource "kubectl_manifest" "dockerhub_secret" {
@@ -186,33 +200,34 @@ apiVersion: v1
 kind: Secret
 metadata:
   name: dockerhub-secret
-  namespace: default
+  namespace: argocd
 type: kubernetes.io/dockerconfigjson
 data:
-  .dockerconfigjson: ${base64encode(data.aws_secretsmanager_secret_version.dockerhub.secret_string)}
+  .dockerconfigjson: ${base64encode(data.aws_ssm_parameter.dockerhub.value)}
 YAML
 }
 
 # ----------------------------
-# GitHub Secret
+# GitHub Secret (from SSM Parameter Store)
 # ----------------------------
-data "aws_secretsmanager_secret_version" "github" {
-  secret_id = "github-credentials"
+data "aws_ssm_parameter" "github" {
+  name            = "/credentials/github"
+  with_decryption = true
 }
 
 locals {
-  github = jsondecode(data.aws_secretsmanager_secret_version.github.secret_string)
+  github = jsondecode(data.aws_ssm_parameter.github.value)
 }
 
 resource "kubectl_manifest" "github_secret" {
-  depends_on = [helm_release.argocd]
+  depends_on = [helm_release.argocd, null_resource.fetch_kubeconfig]
 
   yaml_body = <<YAML
 apiVersion: v1
 kind: Secret
 metadata:
   name: github-secret
-  namespace: default
+  namespace: argocd
 type: kubernetes.io/basic-auth
 stringData:
   username: ${local.github.username}
@@ -224,7 +239,11 @@ YAML
 # Deploy ArgoCD Application
 # ----------------------------
 resource "kubectl_manifest" "argocd_app" {
-  depends_on = [helm_release.argocd, kubectl_manifest.dockerhub_secret, kubectl_manifest.github_secret]
+  depends_on = [
+    helm_release.argocd,
+    kubectl_manifest.dockerhub_secret,
+    kubectl_manifest.github_secret
+  ]
 
   yaml_body = file("${path.module}/argocd_app.yaml")
 }
