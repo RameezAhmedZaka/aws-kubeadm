@@ -175,9 +175,6 @@ resource "helm_release" "argocd" {
   recreate_pods    = true
   replace          = true
 
-    lifecycle {
-    create_before_destroy = true
-  }
 
   values = [
     <<EOF
@@ -200,9 +197,6 @@ data "aws_ssm_parameter" "dockerhub" {
 resource "kubectl_manifest" "dockerhub_secret" {
   depends_on = [helm_release.argocd]
 
-  lifecycle {
-    create_before_destroy = true
-  }
 
   yaml_body = <<YAML
 apiVersion: v1
@@ -231,9 +225,6 @@ locals {
 resource "kubectl_manifest" "github_secret" {
   depends_on = [helm_release.argocd, null_resource.fetch_kubeconfig]
 
-  lifecycle {
-    create_before_destroy = true
-  }
 
   yaml_body = <<YAML
 apiVersion: v1
@@ -253,9 +244,6 @@ resource "kubectl_manifest" "argocd_repo" {
     helm_release.argocd,
     kubectl_manifest.github_secret
   ]
-  lifecycle {
-    create_before_destroy = true
-  }
 
   yaml_body = file("${path.module}/argocd_repo.yaml")
 }
@@ -271,9 +259,7 @@ resource "kubectl_manifest" "argocd_app" {
     kubectl_manifest.argocd_repo
   ]
   
-  lifecycle {
-    create_before_destroy = true
-  }
+
 
   yaml_body = file("${path.module}/argocd_app.yaml")
 }
