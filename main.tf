@@ -90,3 +90,7 @@ module "manager" {
   master_instance_id    = module.nodes.master_instance_id
   worker_instance_id    = module.nodes.worker_instances
 }
+
+module "argocd" {
+  source        = "./modules/argocd"
+}
