@@ -1,0 +1,14 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: argocd-cm
+  namespace: argocd
+data:
+  repositories: |
+    - url: https://github.com/RameezAhmedZaka/argocd-dataapp.git
+      usernameSecret:
+        name: github-secret
+        key: username
+      passwordSecret:
+        name: github-secret
+        key: password

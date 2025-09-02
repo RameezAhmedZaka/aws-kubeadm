@@ -8,13 +8,14 @@ spec:
   source:
     repoURL: https://github.com/RameezAhmedZaka/argocd-dataapp.git
     targetRevision: HEAD
-    path: argocd
+    path: argocd-dataapp
     sourceSecrets:
       - name: github-credentials
   destination:
     server: https://kubernetes.default.svc
-    namespace: default
-  # syncPolicy:
-  #   automated:
-  #     prune: true
-  #     selfHeal: true
+    namespace: dataapp
+    createNamespace: true
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true

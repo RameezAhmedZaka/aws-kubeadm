@@ -139,7 +139,8 @@ helm upgrade -i ingress-nginx ingress-nginx/ingress-nginx \
 # argocd --port-forward --port-forward-namespace=argocd login --username=admin --password=liuELjtbWl843mCK
 
 
-# nohup kubectl port-forward svc/argocd-server -n argocd 8080:443 > /var/log/argocd-portforward.log 2>&1 &
+# kubectl get secret argocd-initial-admin-secret -n argocd -o jsonpath="{.data.password}" | base64 -d; echo
+
 
 # GIT_SECRET=$(aws secretsmanager get-secret-value --secret-id your-git-secret-name --query SecretString --output text)
 # GIT_USERNAME=$(echo $GIT_SECRET | jq -r '.username')
@@ -214,10 +215,23 @@ helm upgrade -i ingress-nginx ingress-nginx/ingress-nginx \
 
 # kubectl -n kube-system rollout restart deployment coredns
 
+# nohup kubectl port-forward svc/argocd-server -n argocd 9090:443 > /var/log/argocd-portforward.log 2>&1 &
 
-
-# # VERSION=v2.13.4
-# # curl -sSL -o argocd https://github.com/argoproj/argo-cd/releases/download/$VERSION/argocd-linux-amd64
-# # chmod +x argocd
-# # sudo mv argocd /usr/local/bin/argocd
+# VERSION=v2.13.4
+# curl -sSL -o argocd https://github.com/argoproj/argo-cd/releases/download/$VERSION/argocd-linux-amd64
+# chmod +x argocd
+# sudo mv argocd /usr/local/bin/argocd
 # export PATH=$PATH:/usr/local/bin
+
+
+#  kubectl get secret argocd-initial-admin-secret -n argocd -o jsonpath="{.data.password}" | base64 -d; echo
+
+# sudo nohup socat TCP-LISTEN:31725,fork TCP:node-ip:31725 > /tmp/socat.log 2>&1 &
+
+# aws ssm start-session \
+#   --target i-0f6ee3d57049a3c25 \
+#   --document-name AWS-StartPortForwardingSession \
+#   --parameters '{"portNumber":["31725"],"localPortNumber":["31725"]}'
+
+# http://localhost:31725/
+
