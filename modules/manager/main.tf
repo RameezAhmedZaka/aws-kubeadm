@@ -118,7 +118,7 @@ resource "null_resource" "fetch_kubeconfig" {
           --output text)
 
         if [ "$STATUS" = "exists" ]; then
-          echo "✅ Kubeconfig ready, downloading..."
+          echo "Kubeconfig ready, downloading..."
 
           CMD_ID=$(aws ssm send-command \
             --targets "Key=instanceIds,Values=$INSTANCE_ID" \
@@ -136,120 +136,74 @@ resource "null_resource" "fetch_kubeconfig" {
             --query "StandardOutputContent" \
             --output text > kubeconfig.yaml
 
-          echo "✅ Kubeconfig saved to kubeconfig.yaml"
+          echo "Kubeconfig saved to kubeconfig.yaml"
           break
         else
-          echo "⌛ Not ready yet, retrying..."
+          echo "Not ready yet, retrying..."
           sleep 20
         fi
       done
     EOT
   }
 }
+# ----------------------------
+# Install Sealed Secrets via Helm
+# -----------------------------
 
-# # ----------------------------
-# # Install ArgoCD via Helm
-# # ----------------------------
-# resource "helm_release" "argocd" {
-#   repository       = "https://argoproj.github.io/argo-helm"
-#   name             = "argocd"
-#   chart            = "argo-cd"
-#   version          = "5.24.1"
-#   namespace        = "argocd"
-#   create_namespace = true
-#   cleanup_on_fail  = true
-#   timeout          = 300
-#   skip_crds        = true
-#   force_update     = true
-#   wait             = true
-#   recreate_pods    = true
-#   replace          = true
+resource "helm_release" "sealed_secrets" {
+  depends_on = [null_resource.wait_for_ssm]
 
+  name             = "sealed-secrets"
+  repository       = "https://bitnami-labs.github.io/sealed-secrets"
+  chart            = "sealed-secrets"
+  namespace        = "kube-system"
+  create_namespace = false
+  version          = "2.16.2"
+}
 
-#   values = [
-#     <<EOF
-# server:
-#   service:
-#     type: NodePort
-# EOF
-#   ]
-# }
+# ----------------------------
+# Install kubeseal CLI + Seal and Apply Secret (Remote)
+# -----------------------------
+resource "aws_ssm_document" "install_kubeseal" {
+  name          = "install_kubeseal"
+  document_type = "Command"
 
-# # ----------------------------
-# # Docker Hub Secret (from SSM Parameter Store)
-# # ----------------------------
-# data "aws_ssm_parameter" "dockerhub" {
-#   name            = "/credentials/dockerhub"
-#   with_decryption = true
-#   depends_on = [  ]
-# }
+  content = jsonencode({
+    schemaVersion = "2.2",
+    description   = "Run commands to install kubeseal",
+    mainSteps = [
+      {
+        action = "aws:runShellScript",
+        name   = "run_install_kubeseal",
+        inputs = {
+          runCommand = [
+            "#!/bin/bash",
+            "curl -OL https://github.com/bitnami-labs/sealed-secrets/releases/download/v0.32.2/kubeseal-0.32.2-linux-amd64.tar.gz",
+            "tar -xvzf kubeseal-0.32.2-linux-amd64.tar.gz kubeseal",
+            "sudo install -m 755 kubeseal /usr/local/bin/kubeseal",
+            "export KUBECONFIG=/root/.kube/config",
+            "kubeseal --fetch-cert --controller-name=sealed-secrets --controller-namespace=kube-system > my-cluster-cert.pem",
+            "kubectl create secret generic my-secret --from-literal=username=admin --from-literal=password=Test123 --dry-run=client -o yaml > /tmp/my-secret.yaml",
+            "kubeseal --cert my-cluster-cert.pem --format yaml < /tmp/my-secret.yaml > /tmp/my-secret-sealed.yaml",
+            "kubectl apply -f /tmp/my-secret-sealed.yaml"
+          ]
+        }
+      }
+    ]
+  })
+}
 
-# resource "kubectl_manifest" "dockerhub_secret" {
-#   depends_on = [helm_release.argocd]
-
-
-#   yaml_body = <<YAML
-# apiVersion: v1
-# kind: Secret
-# metadata:
-#   name: dockerhub-secret
-#   namespace: argocd
-# type: kubernetes.io/dockerconfigjson
-# data:
-#   .dockerconfigjson: ${base64encode(data.aws_ssm_parameter.dockerhub.value)}
-# YAML
-# }
-
-# # ----------------------------
-# # GitHub Secret (from SSM Parameter Store)
-# # ----------------------------
-# data "aws_ssm_parameter" "github" {
-#   name            = "/credentials/github"
-#   with_decryption = true
-# }
-
-# locals {
-#   github = jsondecode(data.aws_ssm_parameter.github.value)
-# }
-
-# resource "kubectl_manifest" "github_secret" {
-#   depends_on = [helm_release.argocd, null_resource.fetch_kubeconfig]
-
-
-#   yaml_body = <<YAML
-# apiVersion: v1
-# kind: Secret
-# metadata:
-#   name: github-secret
-#   namespace: argocd
-# type: kubernetes.io/basic-auth
-# stringData:
-#   username: ${local.github.username}
-#   password: ${local.github.token}
-# YAML
-# }
-
-# resource "kubectl_manifest" "argocd_repo" {
-#   depends_on = [
-#     helm_release.argocd,
-#     kubectl_manifest.github_secret
-#   ]
-
-#   yaml_body = file("${path.module}/argocd_repo.yaml")
-# }
-
-# # ----------------------------
-# # Deploy ArgoCD Application
-# # ----------------------------
-# resource "kubectl_manifest" "argocd_app" {
-#   depends_on = [
-#     helm_release.argocd,
-#     kubectl_manifest.dockerhub_secret,
-#     kubectl_manifest.github_secret,
-#     kubectl_manifest.argocd_repo
-#   ]
-  
-
-
-#   yaml_body = file("${path.module}/argocd_app.yaml")
-# }
+resource "null_resource" "run_kubeseal_ssm" {
+  depends_on = [aws_ssm_document.install_kubeseal, helm_release.sealed_secrets]
+  triggers = {
+    always_run = timestamp()  # This changes every apply
+  }
+  provisioner "local-exec" {
+    command = <<EOT
+aws ssm send-command \
+  --targets "Key=instanceIds,Values=${aws_instance.manager.id}" \
+  --document-name ${aws_ssm_document.install_kubeseal.name} \
+  --region us-east-1
+EOT
+  }
+}
