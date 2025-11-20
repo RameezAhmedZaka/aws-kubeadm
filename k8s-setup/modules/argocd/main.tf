@@ -91,3 +91,13 @@ resource "kubectl_manifest" "argocd_app" {
 
   yaml_body = file("${path.module}/argocd_app.yaml")
 }
+
+
+resource "kubectl_manifest" "argocd_projects_apps" {
+  depends_on = [
+    helm_release.argocd,
+    kubectl_manifest.github_secret
+  ]
+
+  yaml_body = file("${path.module}/argocd_projects_apps.yaml")
+}

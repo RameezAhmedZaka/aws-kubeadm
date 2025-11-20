@@ -30,7 +30,7 @@ resource "aws_security_group" "nodes_sg" {
   from_port                = 6443
   to_port                  = 6443
   protocol                 = "tcp"
-  security_groups          = ["sg-0d2a6d76f97d8c68a"]
+  security_groups          = ["sg-0d22ab16c6b132a69"]
 }
 
 

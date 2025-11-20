@@ -5,7 +5,7 @@ resource "helm_release" "prometheus" {
   create_namespace = true
   timeout          = 300
   force_update     = true
-  wait             = true
+  wait             = false
   recreate_pods    = true
   replace          = true
   repository = "https://prometheus-community.github.io/helm-charts"
@@ -26,16 +26,17 @@ resource "helm_release" "prometheus" {
     },
     {
       name  = "pushgateway.enabled"
-      value = "true"
+      value = "false"
     }
   ]
+  depends_on = [helm_release.grafana]
 }
 
 resource "helm_release" "grafana" {
   name       = "grafana"
   namespace  = "monitoring"
   create_namespace = true
-
+  wait             = false
   repository = "https://grafana.github.io/helm-charts"
   chart      = "grafana"
 
