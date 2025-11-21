@@ -36,7 +36,7 @@ resource "aws_security_group_rule" "allow_manager_to_master_api" {
   from_port                = 6443
   to_port                  = 6443
   protocol                 = "tcp"
-  security_group_id        = "sg-0d22ab16c6b132a69"
+  security_group_id        = "sg-0fab6f0e21c1dee41"
   source_security_group_id = aws_security_group.bastion_sg.id
 }
 

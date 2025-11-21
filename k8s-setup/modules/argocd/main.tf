@@ -7,9 +7,6 @@ terraform {
     }
   }
 }
-# ----------------------------
-# Install ArgoCD via Helm
-# ----------------------------
 resource "helm_release" "argocd" {
   repository       = "https://argoproj.github.io/argo-helm"
   name             = "argocd"
@@ -18,26 +15,48 @@ resource "helm_release" "argocd" {
   namespace        = "argocd"
   create_namespace = true
   cleanup_on_fail  = true
-  timeout          = 300
-  skip_crds        = true
+  timeout          = 600
+  skip_crds        = false
   force_update     = true
   wait             = true
   recreate_pods    = true
   replace          = true
+
   set = [
-  {
-    name  = "installCRDs"
-    value = "true"
-  }
-  ]
-  values = [
-    <<EOF
-server:
-  service:
-    type: NodePort
-EOF
+
+    { name = "installCRDs", value = "true" },
+
+    # Metrics
+    { name = "server.metrics.enabled", value = "true" },
+    { name = "controller.metrics.enabled", value = "true" },
+    { name = "repoServer.metrics.enabled", value = "true" },
+    { name = "applicationSet.metrics.enabled", value = "true" },
+    { name = "notifications.metrics.enabled", value = "true" },
+    { name = "redis.metrics.enabled", value = "true" },
+
+    # Prometheus integration
+    { name = "prometheus.enabled", value = "true" },
+    { name = "prometheus.serviceMonitor.enabled", value = "true" },
+    { name = "prometheus.serviceMonitor.additionalLabels.release", value = "prometheus" },
+
+    { name = "metrics.enabled", value = "true" },
+    { name = "metrics.serviceMonitor.enabled", value = "true" },
+    { name = "metrics.serviceMonitor.additionalLabels.release", value = "prometheus" },
+
+    # Ports
+    { name = "server.service.metricsPort", value = "8083" },
+    { name = "controller.service.metricsPort", value = "8082" },
+    { name = "repoServer.service.metricsPort", value = "8084" },
+    { name = "applicationSet.service.metricsPort", value = "8080" },
+
+    # Server
+    { name = "server.service.type", value = "NodePort" },
+
+    # Disable Dex
+    { name = "dex.enabled", value = "false" }
   ]
 }
+
 
 # ----------------------------
 # GitHub Secret (from SSM Parameter Store)
@@ -68,31 +87,9 @@ stringData:
 YAML
 }
 
-resource "kubectl_manifest" "argocd_repo" {
-  depends_on = [
-    helm_release.argocd,
-    kubectl_manifest.github_secret
-  ]
-
-  yaml_body = file("${path.module}/argocd_repo.yaml")
-}
-
 # ----------------------------
 # Deploy ArgoCD Application
-# ----------------------------
-resource "kubectl_manifest" "argocd_app" {
-  depends_on = [
-    helm_release.argocd,
-    kubectl_manifest.github_secret,
-    kubectl_manifest.argocd_repo
-  ]
-  
-
-
-  yaml_body = file("${path.module}/argocd_app.yaml")
-}
-
-
+# ---------------------------
 resource "kubectl_manifest" "argocd_projects_apps" {
   depends_on = [
     helm_release.argocd,
