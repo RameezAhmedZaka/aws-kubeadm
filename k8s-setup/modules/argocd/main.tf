@@ -16,45 +16,72 @@ resource "helm_release" "argocd" {
   create_namespace = true
   cleanup_on_fail  = true
   timeout          = 600
-  skip_crds        = false
   force_update     = true
   wait             = true
   recreate_pods    = true
   replace          = true
 
   set = [
-
     { name = "installCRDs", value = "true" },
-
-    # Metrics
-    { name = "server.metrics.enabled", value = "true" },
-    { name = "controller.metrics.enabled", value = "true" },
-    { name = "repoServer.metrics.enabled", value = "true" },
-    { name = "applicationSet.metrics.enabled", value = "true" },
-    { name = "notifications.metrics.enabled", value = "true" },
-    { name = "redis.metrics.enabled", value = "true" },
-
-    # Prometheus integration
-    { name = "prometheus.enabled", value = "true" },
-    { name = "prometheus.serviceMonitor.enabled", value = "true" },
-    { name = "prometheus.serviceMonitor.additionalLabels.release", value = "prometheus" },
-
-    { name = "metrics.enabled", value = "true" },
-    { name = "metrics.serviceMonitor.enabled", value = "true" },
-    { name = "metrics.serviceMonitor.additionalLabels.release", value = "prometheus" },
-
-    # Ports
-    { name = "server.service.metricsPort", value = "8083" },
-    { name = "controller.service.metricsPort", value = "8082" },
-    { name = "repoServer.service.metricsPort", value = "8084" },
-    { name = "applicationSet.service.metricsPort", value = "8080" },
-
-    # Server
-    { name = "server.service.type", value = "NodePort" },
-
-    # Disable Dex
-    { name = "dex.enabled", value = "false" }
+    { name = "dex.enabled", value = "false" },
+    { name = "server.service.type", value = "NodePort" }
   ]
+
+  values = [
+    <<-EOT
+server:
+  metrics:
+    enabled: true
+    serviceMonitor:
+      enabled: true
+      additionalLabels:
+        release: "prometheus"
+
+controller:
+  metrics:
+    enabled: true
+    serviceMonitor:
+      enabled: true
+      additionalLabels:
+        release: "prometheus"
+
+repoServer:
+  metrics:
+    enabled: true
+    serviceMonitor:
+      enabled: true
+      additionalLabels:
+        release: "prometheus"
+
+applicationSet:
+  metrics:
+    enabled: true
+    serviceMonitor:
+      enabled: true
+      additionalLabels:
+        release: "prometheus"
+
+notifications:
+  metrics:
+    enabled: true
+    serviceMonitor:
+      enabled: true
+      additionalLabels:
+        release: "prometheus"
+
+redis:
+  service:
+    type: ClusterIP
+    portName: http-metrics
+  metrics:
+    enabled: true
+    serviceMonitor:
+      enabled: true
+      additionalLabels:
+        release: "prometheus"
+EOT
+  ]
+
 }
 
 

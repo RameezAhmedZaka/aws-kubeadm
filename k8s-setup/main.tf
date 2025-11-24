@@ -56,18 +56,17 @@ module "manager" {
   worker_instance_id    = module.nodes.worker_instances
 }
 
-module "argocd" {
-  source        = "./modules/argocd"
+module "monitoring" {
+  source        = "./modules/monitoring"
   depends_on = [
     module.manager
   ]
 }
 
-module "monitoring" {
-  source        = "./modules/monitoring"
+module "argocd" {
+  source        = "./modules/argocd"
   depends_on = [
     module.manager,
-    module.argocd
+    module.monitoring
   ]
 }
-
