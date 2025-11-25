@@ -72,13 +72,15 @@ notifications:
 redis:
   service:
     type: ClusterIP
-    portName: http-metrics
   metrics:
     enabled: true
     serviceMonitor:
       enabled: true
       additionalLabels:
         release: "prometheus"
+  exporter:
+    enabled: true
+    portName: metrics
 EOT
   ]
 
